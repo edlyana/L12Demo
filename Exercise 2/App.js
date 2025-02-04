@@ -2,7 +2,7 @@ import React,{useState, useEffect} from 'react';
 import {StatusBar, Button, StyleSheet, Text, View} from 'react-native';
 
 import {Audio} from "expo-av";
-import soundfile from "./short1.wav";
+// import soundfile from "./short1.wav";
 
 const styles = StyleSheet.create({
   container: {

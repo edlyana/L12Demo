@@ -1,95 +1,85 @@
 import React,{useState, useEffect} from 'react';
 import {StatusBar, StyleSheet, Text, View, Image} from 'react-native';
 
-import { Accelerometer  } from "expo-sensors";
-import {Audio} from "expo-av";
+import { Gyroscope } from 'expo-sensors';
+import { Audio } from 'expo-av';
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#BADEFC',
         flex: 1,
-        flexDirection: 'column',
+        justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#BED8D4',
     },
-    textStyle: {
-        fontSize: 20,
+    text: {
+        fontSize: 21,
         fontWeight: 'bold',
-        textAlign: 'center',
-        padding: 70,
+        color: '#444444',
     },
     image: {
-        width: 450,
-        height: 450,
-        alignSelf: 'center',
+        width: 300,
+        height: 300,
+        resizeMode: 'contain',
     },
 });
 
-const SHAKE_THRESHOLD= 1.4;
-let lastShakeTime = 0;
+const images = [
+    require('./Images/meme1.png'),
+    require('./Images/meme2.png'),
+    require('./Images/meme3.png'),
+    require('./Images/meme4.png'),
+    require('./Images/meme5.png'),
+];
 
 export default function App() {
+    const [{ x, y, z }, setData] = useState({ x: 1, y: 0, z: 0 });
+    const [mySound, setMySound] = useState(false);
 
-    const [{x, y, z}, setData] = useState({x:0,y:0, z:0});
-    const [mySound, setMySound] = useState();
+    const [shakeDetected, setShakeDetected] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-    const [shaken, setShaken] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(false);
+    useEffect(() => {
+        Gyroscope.setUpdateInterval(100);
+
+        const subscription = Gyroscope.addListener(data => {
+            setData(data);
+            if (Math.abs(data.x) > 2 || Math.abs(data.y) > 2 || Math.abs(data.z) > 2) {
+                handleShake();
+            }
+        });
+
+        return () => subscription.remove();
+    }, [mySound]);
 
     async function playSound() {
-        const soundfile = require('./horseSound.wav');
-        const {sound} = await Audio.Sound.createAsync(soundfile);
-        setMySound(sound);
-        setIsPlaying(true);
+        setMySound(true);
 
-        sound.setOnPlaybackStatusUpdate((status) => {
+        const soundFile = require('./meowSound2.wav');
+        const { sound } = await Audio.Sound.createAsync(soundFile);
+
+        sound.setOnPlaybackStatusUpdate(status => {
             if (status.didJustFinish) {
-                setIsPlaying(false);
+                setMySound(false);
+                setShakeDetected(false);
             }
         });
 
         await sound.playAsync();
     }
 
-    function handleShake(acceleration) {
-        const {x, y , z} = acceleration;
-        const accelerationMagnitude = Math.sqrt(x * x + y * y);
-
-        if (accelerationMagnitude > SHAKE_THRESHOLD) {
-            const currentTime = Date.now();
-
-            if (currentTime - lastShakeTime > 1000) {
-                lastShakeTime = currentTime;
-                playSound();
-                setShaken(true);
-
-                setTimeout(() => setShaken(false), 2000);
-            }
+    const handleShake = () => {
+        if (!mySound) {
+            setShakeDetected(true);
+            playSound();
+            setCurrentImageIndex(prevIndex => (prevIndex + 1) % images.length);
         }
-    }
-
-    useEffect(() => {
-        Accelerometer.setUpdateInterval(100);
-
-        const subscription = Accelerometer.addListener((data) => {
-            setData(data);
-            handleShake(data);
-        });
-
-        return () => {
-            subscription.remove();
-            if (mySound) {
-                mySound.unloadAsync();
-            }
-        };
-    }, [mySound]);
+    };
 
     return (
         <View style={styles.container}>
-            <StatusBar/>
-            <Text style={styles.textStyle}>{shaken ? 'SHAKE!' : 'Welcome to the shake game'}</Text>
-            {isPlaying && (
-                <Image source={require('./game1.jpg')} style={styles.image} />
-            )}
+            <StatusBar />
+            {!shakeDetected && <Text style={styles.text}>Shake for a surrrrprise!</Text>}
+            {shakeDetected && <Image source={images[currentImageIndex]} style={styles.image} />}
         </View>
     );
 }
